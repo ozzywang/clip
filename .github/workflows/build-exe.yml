@@ -3,8 +3,8 @@ name: Build Windows EXE
 on:
   push:
     tags:
-      - 'v*'                # 推送 v 开头的标签时触发
-  workflow_dispatch:         # 允许手动触发
+      - 'v*'                # 推送 v 开头的标签时触发构建
+  workflow_dispatch:         # 允许在 Actions 页面手动触发
 
 jobs:
   build:
@@ -22,19 +22,16 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install pyinstaller
 
       - name: Download FFmpeg static build
         shell: pwsh
         run: |
-          # 从 BtbN 的 GitHub 仓库下载 Windows 64位 ffmpeg 压缩包
           $url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
           Invoke-WebRequest -Uri $url -OutFile ffmpeg.zip
           Expand-Archive -Path ffmpeg.zip -DestinationPath ffmpeg_temp
-          # 找到解压后的 bin 目录（通常只有一个子目录）
           $ffmpeg_dir = Get-ChildItem -Path ffmpeg_temp -Directory | Select-Object -First 1
           $bin_dir = Join-Path $ffmpeg_dir.FullName "bin"
-          # 复制 ffmpeg.exe 和 ffprobe.exe 到项目根目录，方便 PyInstaller 添加
           Copy-Item "$bin_dir\ffmpeg.exe" .
           Copy-Item "$bin_dir\ffprobe.exe" .
 
@@ -45,8 +42,14 @@ jobs:
             --add-binary "ffmpeg.exe;." `
             --add-binary "ffprobe.exe;." `
             --name "VideoSplitter" `
-            --icon "icon.ico" `   # 如果没有 icon.ico 就删除这一行
             main.py
+          # 如果你有图标文件 icon.ico，请将上面最后一行替换为：
+          # pyinstaller --onefile --windowed `
+          #   --add-binary "ffmpeg.exe;." `
+          #   --add-binary "ffprobe.exe;." `
+          #   --name "VideoSplitter" `
+          #   --icon "icon.ico" `
+          #   main.py
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
